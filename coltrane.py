@@ -99,12 +99,13 @@ class Tone:
         
         Args:
             s (str): The name of the tone (e.g "E#4")
+            clean_name (bool): If true, will return a tuple (s, value) where s is the name with the
+            octave number not included
         
         Returns:
             int: the tone value
         """
-
-        # TODO: add support for double sharp, etc.
+        # TODO: add support for double sharps and flats
         # TODO: add support for two-digit octave numbers
         
         octave = 0
@@ -160,6 +161,35 @@ class Tone:
             str: The letter of the Tone
         """
         return self.name[0]
+
+
+    def setLetter(self, letter):
+        """Sets the letter of the tone to the given letter while preserving its pitch by adding
+        sharps or flats
+        
+        Args:
+            letter (str): the new letter for the tone
+        """
+
+        lValue = Tone.nameToValue(letter)
+        diff =  (self.value % 12) - (lValue % 12)
+        if (diff > 6):
+            diff = 12 - diff
+            diff *= -1
+        elif (diff < -6):
+            diff = 12 + diff
+            
+        self.name = letter
+        if diff > 0:
+            while diff > 0:
+                self.name += "#"
+                diff -= 1
+        elif diff < 0:
+            while diff < 0:
+                self.name += "b"
+                diff +=1
+
+
 
     def getName(self):
         """Returns the string name of the tone, without the octave number (e.g. Tone("C#4") => "C#")
@@ -273,9 +303,9 @@ class Tone:
         # return options
 
     def getEnharmonic(self):
-        """Gets the one tone enharmonic to the given tone. This only considers single flat and sharp
-        tones (will never return C##). If no single sharp or flat tones are found, this returns a
-        copy of the given tone unaltered.
+        """Gets a Tone name enharmonic to the given tone. This only considers single flat
+        and sharp tones (will never return C##). If no single sharp or flat tones are found, this
+        returns a copy of the given tone unaltered.
         Returns:
             Tone: A new Tone object
         """
@@ -335,59 +365,6 @@ class Tone:
 #=================================================================================================#
 
 
-class Mode:
-
-    ionian = [2,2,1,2,2,2,1]
-
-    modes = {
-        "ionian"        : 1,
-        "major"         : 1,
-        "dorian"        : 2,
-        "phrygian"      : 3,
-        "lydian"        : 4,
-        "mixolydian"    : 5,
-        "aeolian"       : 6,
-        "minor"         : 6,
-        "locrian"       : 7
-    }
-
-    values = {
-        1 : "ionian",
-        2 : "dorian",
-        3 : "phrygian",
-        4 : "lydian",
-        5 : "mixolydian",
-        6 : "aeolian",
-        7 : "locrian"
-    }
-
-    def modeToValue(m):
-        return Mode.modes[m]
-
-    def valueToMode(v, prefer_sharp = False):
-        return Mode.values[v]
-
-    def valueToSteps(v):
-        return Mode.ionian[v-1 : len(Mode.ionian)] + Mode.ionian[0:v-1]
-
-
-    name = ""
-    value = 0
-    steps = []
-
-    def __init__(self, m):
-        if isinstance(m, str):
-            self.name = m
-            self.value = Mode.modeToValue(m)
-        elif isinstance(m, int):
-            self.value = m
-            self.name = Mode.valueToMode(m)
-        self.steps = Mode.valueToSteps(self.value)
-
-
-#=================================================================================================#
-
-
 class ToneCollection(list):
     tones = []
     def __init__(self, tones):
@@ -417,33 +394,85 @@ class ToneCollection(list):
 
 
 
+#=================================================================================================#
 
+
+
+class DiatonicMode:
+
+    ionian = [2,2,1,2,2,2,1]
+
+    modes = {
+        "ionian"        : 1,
+        "major"         : 1,
+        "dorian"        : 2,
+        "phrygian"      : 3,
+        "lydian"        : 4,
+        "mixolydian"    : 5,
+        "aeolian"       : 6,
+        "minor"         : 6,
+        "locrian"       : 7
+    }
+
+    values = {
+        1 : "ionian",
+        2 : "dorian",
+        3 : "phrygian",
+        4 : "lydian",
+        5 : "mixolydian",
+        6 : "aeolian",
+        7 : "locrian"
+    }
+
+    def modeToValue(m):
+        if m in DiatonicMode.modes:
+            return DiatonicMode.modes[m]
+        else:
+            raise ValueError("Diatonic mode named", m, "not found in database.")
+
+    def valueToMode(v, prefer_sharp = False):
+        if v in DiatonicMode.values:
+            return DiatonicMode.values[v]
+        else:
+            raise ValueError("Diatonic mode with value", v, "not found in database")
+
+    def valueToSteps(v):
+        return DiatonicMode.ionian[v-1 : len(DiatonicMode.ionian)] + DiatonicMode.ionian[0:v-1]
+
+
+    name = ""
+    value = 0
+    steps = []
+
+    def __init__(self, m):
+        if isinstance(m, str):
+            self.name = m
+            self.value = DiatonicMode.modeToValue(m)
+        elif isinstance(m, int):
+            self.value = m
+            self.name = DiatonicMode.valueToMode(m)
+        self.steps = DiatonicMode.valueToSteps(self.value)
 
 
 #=================================================================================================#
 
 
-class Scale(ToneCollection): 
-    name = ""
-    key = None
-    mode = None
+class Scale(ToneCollection):
+    def __init__(self, key, steps):
+        intervals = [sum(steps[0:i+1]) for i in range(len(steps))]
+        values = [key.value] + [key.value + i for i in intervals]
+        raw_tones = [Tone(v) for v in values]
+        self.tones = DiatonicScale.cleanScale(raw_tones, root = key)
 
-    def __init__(self, key, mode):
-            if not isinstance(key, (Tone, str, int)):
-                raise ValueError("Invalid Type: expected key to be Tone, string or int but instead was " + type(key))
-            if not isinstance(key, Tone):
-                key = Tone(key)
 
-            if not isinstance(mode, (Mode, str, int)):
-                raise ValueError("Invalid Type: expected mode to be Mode, string or int but instead was " + type(mode))
-            if not isinstance(mode, Mode):
-                mode = Mode(mode)
-            
-            steps = mode.steps
-            intervals = [sum(steps[0:i+1]) for i in range(len(steps))]
-            values = [key.value] + [key.value + i for i in intervals]
-            raw_tones = [Tone(v) for v in values]
-            self.tones = Scale.cleanScale(raw_tones, root = key)
+    def smartParse(key, scaleName):
+        if scaleName in DiatonicMode.modes:
+            return DiatonicScale(key, scaleName)
+        elif scaleName in NonDiatonicScale.scales:
+            return NonDiatonicScale(key, scaleName)
+        else:
+            raise ValueError("Scale named", scaleName, "not recognized.") 
+
 
     def cleanScale(tones, root=None):
         if root is not None:
@@ -454,17 +483,103 @@ class Scale(ToneCollection):
 
         for i in range(0, len(tones)-1):
             if tones[i+1].getLetter() != tones[i].getNextLetter():
-                tones[i+1] = tones[i+1].getEnharmonic()
+                tones[i+1].setLetter(tones[i].getNextLetter())
 
         return tones
 
 
 
+class DiatonicScale(Scale): 
+    key = None
+    mode = None
+
+    def __init__(self, key, mode):
+            if not isinstance(key, (Tone, str, int)):
+                raise ValueError("Invalid Type: expected key to be Tone, string or int but instead was " + type(key))
+            if not isinstance(key, Tone):
+                key = Tone(key)
+
+            if not isinstance(mode, (DiatonicMode, str, int)):
+                raise ValueError("Invalid Type: expected mode to be DiatonicMode, string or int but instead was " + type(mode))
+            if not isinstance(mode, DiatonicMode):
+                mode = DiatonicMode(mode)
+            
+            steps = mode.steps
+            super().__init__(key, steps)
+
+#=================================================================================================#
+
+class NonDiatonicScale(Scale):
+    scales = {
+        "acoustic": [2, 2, 2, 1, 2, 1, 2],
+        "algerian": [2, 1, 3, 1, 1, 3, 1, 2, 1, 2],
+        "altered": [1, 2, 1, 2, 2, 2, 2],
+        "augmented": [3, 1, 3, 1, 3, 1],
+        "bebop dominant": [2, 2, 1, 2, 2, 1, 1, 1],
+        "blues": [3, 2, 1, 1, 3, 2],
+        "chromatic": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "diminished": [2, 1, 2, 1, 2, 1, 2, 1],
+        "double harmonic": [1, 3, 1, 2, 1, 3, 1],
+        "enigmatic": [1, 3, 2, 2, 2, 1, 1],
+        "flamenco": [1, 3, 1, 2, 1, 3, 1],
+        "gypsy": [2, 1, 3, 1, 1, 2, 2],
+        "half diminished": [2, 1, 2, 1, 2, 2, 2],
+        "harmonic major": [2, 2, 1, 2, 1, 3, 1],
+        "harmonic minor": [2, 1, 2, 2, 1, 3, 1],
+        "hirajoshi": [4, 2, 1, 4, 1],
+        "hungarian gypsy": [2, 1, 3, 1, 1, 3, 1],
+        "hungarian minor": [2, 1, 3, 1, 1, 3, 1],
+        "in": [1, 4, 2, 1, 4],
+        "insen": [1, 4, 2, 4, 2],
+        "istrian": [1, 2, 1, 2],
+        "iwato": [1, 4, 1, 4, 2],
+        "lydian augmented": [2, 2, 2, 2, 1, 2, 1],
+        "major locrian": [2, 2, 1, 1, 2, 2, 2],
+        "major pentatonic": [2, 2, 3, 2, 3],
+        "melodic minor": [2, 1, 2, 2, 2, 2, 1 ],
+        "melodic minor ascending": [2, 1, 2, 2, 2, 2, 1 ],
+        "melodic minor descending": [2, 2, 1, 2, 2, 1, 2],
+        "minor pentatonic": [3, 2, 2, 3, 2],
+        "neapolitan major": [1, 2, 2, 2, 2, 2, 1],
+        "neapolitan minor": [1, 2, 2, 2, 1, 3, 1],
+        "octatonic": [2, 1, 2, 1, 2, 1, 2, 1],
+        "persian": [1, 3, 1, 1, 2, 3, 1],
+        "phrygian dominant": [1, 3, 1, 2, 1, 2, 2],
+        "prometheus": [2, 2, 2, 3, 1, 2],
+        "super locrian": [1, 2, 1, 2, 2, 2, 2],
+        "tritone": [1, 3, 2, 1, 3, 2],
+        "whole tone": [2, 2, 2, 2, 2, 2]
+    }
+
+    def __init__(self, key, scaleName):
+        if not isinstance(key, (Tone, str, int)):
+            raise ValueError("Invalid Type: expected key to be Tone, string or int but instead was " + type(key))
+        if not isinstance(key, Tone):
+            key = Tone(key)
+        if not isinstance(scaleName, (str)):
+            raise ValueError("Invalid Type: expected scaleName to be str, but instead was" + type(scaleName))
+        if not scaleName in NonDiatonicScale.scales:
+            raise ValueError("Invalid scale name:", scaleName, "not found in database.")
+        steps = NonDiatonicScale.scales[scaleName]
+        super().__init__(key, steps)           
+
+
+
+
+#=================================================================================================#
+
 
 if __name__ == '__main__':
-    print(Scale("F#", "major"))
+    # print(DiatonicScale("F#", "major"))
     # print(Tone.valueToName(10))
-    # f = Tone("F")
+    f = Tone("C")
+    f.setLetter("A")
+    print(f)
+    
+
+    f = Tone("C")
+    f.setLetter("D")
+    print(f)
     # es = Tone("E#")
     # print(f.getInterval(es))
 

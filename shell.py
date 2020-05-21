@@ -11,12 +11,10 @@ class Shell(cmd.Cmd):
         super(Shell, self).__init__()
         
     def do_scale(self, s):
-        args = s.split(" ")
+        args = s.split(" ", 1)
         args[0] = args[0][0].upper() + args[0][1:]
         if Shell.checkArgs(args, 2):
-            if len(args) != 2:
-                print("Error")
-            print(coltrane.ToneCollection(coltrane.Scale(*args)).prettySequence())
+            print(coltrane.ToneCollection(coltrane.Scale.smartParse(*args)).prettySequence())
 
     def help_scale(self):
         print("Prints the notes in a given scale. \n\
