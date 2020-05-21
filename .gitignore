@@ -7,5 +7,6 @@
 [Ss]cripts
 [Ss]hare
 pyvenv.cfg
+__pycache__
 .venv
 pip-selfcheck.json
