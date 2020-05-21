@@ -178,7 +178,7 @@ class Tone:
             diff *= -1
         elif (diff < -6):
             diff = 12 + diff
-            
+
         self.name = letter
         if diff > 0:
             while diff > 0:
@@ -370,6 +370,18 @@ class ToneCollection(list):
     def __init__(self, tones):
         self.tones = list(Tone(n) for n in tones)
 
+    def generate(root, steps=None, intervals=None):
+        values = []
+        if steps is not None:
+            intervals = [sum(steps[0:i+1]) for i in range(len(steps))]
+            values = [root.value] + [root.value + i for i in intervals]
+        elif intervals is not None:
+            values = [root.value + i for i in intervals]
+
+        tones = [Tone(v) for v in values]
+        return ToneCollection(tones)
+
+
     def __str__(self):
         return str([str(tone) for tone in self.tones])
 
@@ -458,11 +470,10 @@ class DiatonicMode:
 
 
 class Scale(ToneCollection):
-    def __init__(self, key, steps):
-        intervals = [sum(steps[0:i+1]) for i in range(len(steps))]
-        values = [key.value] + [key.value + i for i in intervals]
-        raw_tones = [Tone(v) for v in values]
-        self.tones = DiatonicScale.cleanScale(raw_tones, root = key)
+    def __init__(self, key, steps=None, intervals=None):
+        raw_tones = ToneCollection.generate(key, steps, intervals).tones
+        self.tones = Scale.cleanScale(raw_tones, root = key)
+
 
 
     def smartParse(key, scaleName):
@@ -505,7 +516,7 @@ class DiatonicScale(Scale):
                 mode = DiatonicMode(mode)
             
             steps = mode.steps
-            super().__init__(key, steps)
+            super().__init__(key, steps=steps)
 
 #=================================================================================================#
 
@@ -561,7 +572,7 @@ class NonDiatonicScale(Scale):
         if not scaleName in NonDiatonicScale.scales:
             raise ValueError("Invalid scale name:", scaleName, "not found in database.")
         steps = NonDiatonicScale.scales[scaleName]
-        super().__init__(key, steps)           
+        super().__init__(key, steps=steps)           
 
 
 
@@ -569,20 +580,91 @@ class NonDiatonicScale(Scale):
 #=================================================================================================#
 
 
+class Chord(ToneCollection):
+
+    quality_intervals = {
+        '5'         :       (0, 7), 
+        'sus'       :       (0, 7),
+        ''          :       (0, 4, 7),
+        'maj'       :       (0, 4, 7),
+        'm'         :       (0, 3, 7),
+        'min'       :       (0, 3, 7),
+        'dim'       :       (0, 3, 6),
+        'aug'       :       (0, 4, 8),
+        'sus2'      :       (0, 2, 7),
+        'sus4'      :       (0, 5, 7),
+        '6'         :       (0, 4, 7, 9),
+        '7'         :       (0, 4, 7, 10),
+        '7-5'       :       (0, 4, 6, 10),
+        '7b5'       :       (0, 4, 6, 10),
+        '7+5'       :       (0, 4, 8, 10),
+        '7#5'       :       (0, 4, 8, 10),
+        '7sus4'     :       (0, 5, 7, 10),
+        'm6'        :       (0, 3, 7, 9),
+        'm7'        :       (0, 3, 7, 10),
+        'm7-5'      :       (0, 3, 6, 10),
+        'dim6'      :       (0, 3, 6, 9),
+        'M7'        :       (0, 4, 7, 11),
+        'maj7'      :       (0, 4, 7, 11),
+        'M7+5'      :       (0, 4, 8, 11),
+        'mM7'       :       (0, 3, 7, 11),
+        'add9'      :       (0, 4, 7, 14),
+        'madd9'     :       (0, 3, 7, 14),
+        '2'         :       (0, 4, 7, 14),
+        'add11'     :       (0, 4, 7, 17),
+        '4'         :       (0, 4, 7, 17),
+        'm69'       :       (0, 3, 7, 9, 14),
+        '69'        :       (0, 4, 7, 9, 14),
+        '9'         :       (0, 4, 7, 10, 14),
+        'm9'        :       (0, 3, 7, 10, 14),
+        'M9'        :       (0, 4, 7, 11, 14),
+        'maj9'      :       (0, 4, 7, 11, 14),
+        '9sus4'     :       (0, 5, 7, 10, 14),
+        '7-9'       :       (0, 4, 7, 10, 13),
+        '7b9'       :       (0, 4, 7, 10, 13),
+        '7+9'       :       (0, 4, 7, 10, 15),
+        '7#9'       :       (0, 4, 7, 10, 15),
+        '9-5'       :       (0, 4, 6, 10, 14),
+        '9b5'       :       (0, 4, 6, 10, 14),
+        '9+5'       :       (0, 4, 8, 10, 14),
+        '9#5'       :       (0, 4, 8, 10, 14),
+        '7#9b5'     :       (0, 4, 6, 10, 15),
+        '7#9#5'     :       (0, 4, 8, 10, 15),
+        '7b9b5'     :       (0, 4, 6, 10, 13),
+        '7b9#5'     :       (0, 4, 8, 10, 13),
+        '11'        :       (0, 7, 10, 14, 17),
+        '7+11'      :       (0, 4, 7, 10, 18),
+        '7#11'      :       (0, 4, 7, 10, 18),
+        '7b9#9'     :       (0, 4, 7, 10, 13, 15),
+        '7b9#11'    :       (0, 4, 7, 10, 13, 18),
+        '7#9#11'    :       (0, 4, 7, 10, 15, 18),
+        '7-13'      :       (0, 4, 7, 10, 20),
+        '7b13'      :       (0, 4, 7, 10, 20),
+        '7b9b13'    :       (0, 4, 7, 10, 13, 17, 20),
+        '9+11'      :       (0, 4, 7, 10, 14, 18),
+        '9#11'      :       (0, 4, 7, 10, 14, 18),
+        '13'        :       (0, 4, 7, 10, 14, 21),
+        '13-9'      :       (0, 4, 7, 10, 13, 21),
+        '13b9'      :       (0, 4, 7, 10, 13, 21),
+        '13+9'      :       (0, 4, 7, 10, 15, 21),
+        '13#9'      :       (0, 4, 7, 10, 15, 21),
+        '13+11'     :       (0, 4, 7, 10, 18, 21),
+        '13#11'     :       (0, 4, 7, 10, 18, 21)
+    }
+
+    def __init__(self, key, quality):
+        if quality not in Chord.quality_intervals:
+            raise ValueError("Chord quality " + str(quality) + " not found")
+        key = Tone(key)
+        intervals = Chord.quality_intervals[quality]
+        self.tones = ToneCollection.generate(key, intervals=intervals)
+
+
+
+
+
 if __name__ == '__main__':
-    # print(DiatonicScale("F#", "major"))
-    # print(Tone.valueToName(10))
-    f = Tone("C")
-    f.setLetter("A")
-    print(f)
-    
-
-    f = Tone("C")
-    f.setLetter("D")
-    print(f)
-    # es = Tone("E#")
-    # print(f.getInterval(es))
-
+    pass
 
 
 #=================================================================================================#
