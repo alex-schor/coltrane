@@ -5,4 +5,5 @@ It's very much a work in progress so far.
 
 Current features
   * Lookup for diatonic and non-diatonic scales
+  * Lookup for chords
 
