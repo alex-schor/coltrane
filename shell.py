@@ -53,14 +53,20 @@ class Shell(cmd.Cmd):
     def help_c(self):
         print("Shortcut for chord")
 
-    def do_progression(self,s):
+    def do_chords(self,s):
         for c in s.split(" "):
             self.do_chord(c, vertical = False)
 
-    def do_cp(self,s):
-        self.do_progression(s)
+    def help_chords(self):
+        print("Performs the chord command on a series of chords, separated by spaces.\n\
+            Syntax: chords <chord> <chord> <chord> ...\n\
+            Example: chords Bmaj7 D7 Gmaj7 Bb7 Eb7 Am7 D7")
 
+    def do_cc(self,s):
+        self.do_chords(s)
 
+    def help_cc(self):
+        print("Shortcut for chords")
 
     def do_s(self,s):
         self.do_scale(s)
