@@ -43,9 +43,9 @@ class Shell(cmd.Cmd):
 
     def help_chord(self):
         print("Prints the notes in a given chord.\n\
-            Syntax:   chord <root> <quality>\n\
-            Examples: chord Eb 7\n\
-                      chord Am 7b9#5")
+            Syntax:   chord <root><quality>\n\
+            Examples: chord Eb7\n\
+                      chord Am7b9#5")
 
     def do_c(self,s):
         self.do_chord(s)
