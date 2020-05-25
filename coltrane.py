@@ -6,6 +6,8 @@ Alex Schor
 5/18/2020
 """
 
+from fuzzywuzzy import process as fwp
+
 
 #=================================================================================================#
 
@@ -401,8 +403,12 @@ class ToneCollection(list):
                 return i
         raise ValueError("Tone " + str(tone) + " not found in ToneCollection")
 
-    def prettySequence(self, include_octaves = False):
-        return " ".join([tone.name for tone in self.tones])
+    def prettySequence(self, include_octaves = False, vertical = False):
+        if vertical:
+            return "\n".join(reversed([tone.name for tone in self.tones]))
+        else:
+            return " ".join([tone.name for tone in self.tones])
+
 
 
 
@@ -484,6 +490,21 @@ class Scale(ToneCollection):
         else:
             raise ValueError("Scale named", scaleName, "not recognized.") 
 
+    def fuzzyParse(scaleName):
+    	allValidNames = list(DiatonicMode.modes.keys())\
+    					+ list(NonDiatonicScale.scales.keys())
+    	if (scaleName.lower() in DiatonicMode.modes) or (scaleName.lower() in NonDiatonicScale.scales):
+    		return [[scaleName.lower(), 100]]
+    	else:
+    		options = fwp.extract(scaleName, allValidNames, limit=3)
+    		goodOptions = []
+    		for o in options:
+    			if o[1] > 75:
+    				goodOptions.append(o)
+    		return goodOptions
+    				
+
+
 
     def cleanScale(tones, root=None):
         if root is not None:
@@ -491,10 +512,10 @@ class Scale(ToneCollection):
             root.setOctave(tones[0].getOctave())
             if tones[0] != root:
                 tones[0] = tones[0].getEnharmonic()
-
-        for i in range(0, len(tones)-1):
-            if tones[i+1].getLetter() != tones[i].getNextLetter():
-                tones[i+1].setLetter(tones[i].getNextLetter())
+        if len(tones) is 8:        
+	        for i in range(0, len(tones)-1):
+	            if tones[i+1].getLetter() != tones[i].getNextLetter():
+	                tones[i+1].setLetter(tones[i].getNextLetter())
 
         return tones
 
@@ -658,6 +679,11 @@ class Chord(ToneCollection):
         key = Tone(key)
         intervals = Chord.quality_intervals[quality]
         self.tones = ToneCollection.generate(key, intervals=intervals)
+
+class ChordProgression:
+    def __init__(self, s):
+        bars = list(chord.strip().split("/") for chord in s.split("|"))
+    
 
 
 
